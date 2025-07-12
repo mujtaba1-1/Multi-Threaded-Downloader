@@ -58,6 +58,19 @@ public class DownloadChunk implements Runnable {
                     if (dc.isCancelled()) {
                         return;
                     }
+
+                    synchronized (dc.pauseLock()) {
+                        while (dc.isPaused()) {
+                            if (dc.isCancelled()) return;
+                            try {
+                                dc.pauseLock().wait();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
+                        }
+                    }
+
                     raf.write(buffer, 0, bytesRead);
                     listener.updateProgress(bytesRead, contentLength);
                 }

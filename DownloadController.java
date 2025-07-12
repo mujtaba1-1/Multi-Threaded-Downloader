@@ -24,6 +24,8 @@ public class DownloadController {
     private RandomAccessFile raf;
 
     private volatile boolean isCancelled = false;
+    private volatile boolean isPaused = false;
+    private final Object pauseLock = new Object();
 
     public DownloadController() {}
 
@@ -228,10 +230,26 @@ public class DownloadController {
         }
     }
 
+    public void pauseDownload() {
+        if (!isPaused) {
+            isPaused = true;
+        }
+    }
+
+    public void resumeDownload() {
+        if (isPaused) {
+            synchronized (pauseLock) {
+                isPaused = false;
+                pauseLock.notifyAll();
+            }
+        }
+    }
+
     public void cancelDownload(String fileURL) {
         System.out.println("Cancelling download...");
 
         isCancelled = true;
+        isPaused = false;
 
         if (executor != null && !executor.isShutdown()) {
             executor.shutdown();
@@ -266,7 +284,7 @@ public class DownloadController {
 
         if (filePath != null) {
             File file = new File(filePath);
-            if (file.exists()) {
+            if (file.exists() && !filePath.equals("downloads/")) {
                 boolean deleted = file.delete();
                 System.out.println("File deleted: " + deleted);
             }
@@ -282,5 +300,13 @@ public class DownloadController {
 
     public boolean isCancelled() {
         return isCancelled;
+    }
+
+    public boolean isPaused() {
+        return isPaused;
+    }
+
+    public Object pauseLock() {
+        return pauseLock;
     }
 }

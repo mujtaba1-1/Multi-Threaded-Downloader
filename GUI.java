@@ -1,5 +1,4 @@
 import java.awt.*;
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -9,13 +8,20 @@ public class GUI extends JFrame implements DownloadProgressListener {
     private final JTextField urlField;
     private final JProgressBar progressBar;
     private final JLabel statusLabel;
+
     private final JButton downloadButton;
+    private final JButton pauseButton;
+    private final JButton cancelButton;
+
+    private final JPanel buttonPanel;
 
     private boolean isDownloading = false;
+    private boolean isPaused = false;
 
     private final DownloadController dc;
 
     private final AtomicInteger totalBytesDownloaded = new AtomicInteger(0);
+    private String fileName = "";
 
     public GUI() {
         super("Multi-Threaded File Downloader");
@@ -49,12 +55,22 @@ public class GUI extends JFrame implements DownloadProgressListener {
 
         downloadButton = new JButton("Download");
         downloadButton.addActionListener(e -> toggleDownload());
+        
+        pauseButton = new JButton("Pause");
+        pauseButton.addActionListener(e -> pauseDownload());
+
+        cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(e -> cancelDownload(urlField.getText().trim()));
+
+        buttonPanel = new JPanel();
+        buttonPanel.add(downloadButton);
+
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.NONE;
         gbc.anchor = GridBagConstraints.CENTER;
-        formPanel.add(downloadButton, gbc);
+        formPanel.add(buttonPanel, gbc);
 
         progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
@@ -97,12 +113,21 @@ public class GUI extends JFrame implements DownloadProgressListener {
 
     private void startDownload(String url) {
         isDownloading = true;
+        isPaused = false;
 
         try {
-            downloadButton.setText("Cancel Download");
-            statusLabel.setText("Status: Downloading " + dc.initialiseFile(url));
+            fileName = dc.initialiseFile(url);
+
+            statusLabel.setText("Status: Downloading " + fileName);
             progressBar.setIndeterminate(true);
-        } catch (IOException e) {
+
+            buttonPanel.removeAll();
+            buttonPanel.add(pauseButton);
+            buttonPanel.add(cancelButton);
+            buttonPanel.revalidate();
+            buttonPanel.repaint();
+
+        } catch (Exception e) {
             SwingUtilities.invokeLater(() -> {
                 JOptionPane.showMessageDialog(this, e, "Error", JOptionPane.ERROR_MESSAGE);
                 cancelDownload(url);
@@ -116,20 +141,15 @@ public class GUI extends JFrame implements DownloadProgressListener {
                 dc.downloadFile(url, this);
                 long end = System.currentTimeMillis();
 
+                System.out.println(start);
+                System.out.println(end);
+
                 SwingUtilities.invokeLater(() -> {
-                    downloadButton.setText("Download");
-                    progressBar.setIndeterminate(false);
-
-                    if (isDownloading) {
-                        statusLabel.setText("Status: Completed | Time Elapsed: " + (end - start) / 1_000_000_000 + " s");
-                    } else {
-                        progressBar.setValue(0);
-                        statusLabel.setText("Status: Cancelled");
-                    }
-
-                    isDownloading = false;
+                    statusLabel.setText("Status: Completed | Time Elapsed: " + (end - start) / 1000 + " s");
+                    resetVariables();
                 });
-            } catch (IOException e) {
+            } 
+            catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {
                     JOptionPane.showMessageDialog(this, e, "Error", JOptionPane.ERROR_MESSAGE);
                     cancelDownload(url);
@@ -139,13 +159,30 @@ public class GUI extends JFrame implements DownloadProgressListener {
     }
 
     private void cancelDownload(String url) {
-        isDownloading = false;
-        dc.cancelDownload(url);
-        downloadButton.setText("Download");
-        statusLabel.setText("Status: Cancelled");
+        isPaused = true;
+        pauseDownload();
+        dc.cancelDownload(url); 
+
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText("Status: Cancelled");
+            resetVariables();
+        });
+    }
+
+    private void resetVariables() {
+        pauseButton.setText("Pause");
+
         progressBar.setIndeterminate(false);
         progressBar.setValue(0);
 
+        buttonPanel.removeAll();
+        buttonPanel.add(downloadButton);
+        buttonPanel.revalidate();
+        buttonPanel.repaint();
+
+        isDownloading = false;
+        isPaused = false;
+        fileName = "";
     }
 
     @Override
@@ -157,5 +194,22 @@ public class GUI extends JFrame implements DownloadProgressListener {
             progressBar.setValue(progress);
         });
 
+    }
+
+    private void pauseDownload() {
+        if (!isPaused) {
+            System.out.println("Paused");
+            pauseButton.setText("Resume");
+            statusLabel.setText("Status: Paused");
+            dc.pauseDownload();
+        } else {
+            System.out.println("Downlaoding again");
+            pauseButton.setText("Pause");
+            statusLabel.setText("Status: Downloading " + fileName);
+            dc.resumeDownload();
+        }
+
+        progressBar.setIndeterminate(isPaused);
+        isPaused = !isPaused;
     }
 }
