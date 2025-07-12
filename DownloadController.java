@@ -75,6 +75,10 @@ public class DownloadController {
             latch.await();
             executor.shutdown();
 
+            if (!isCancelled) {
+                filePath = "downloads/";
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
             if (executor != null) executor.shutdownNow();
@@ -282,6 +286,7 @@ public class DownloadController {
             }
         }
 
+        System.out.println(filePath);
         if (filePath != null) {
             File file = new File(filePath);
             if (file.exists() && !filePath.equals("downloads/")) {
