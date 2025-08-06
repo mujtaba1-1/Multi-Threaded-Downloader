@@ -25,7 +25,7 @@ Here're some of the project's best features:
 <p>1. Clone the repo:</p>
 
 ```
-git clone https://github.com/mujtaba1-1/Multi-Threaded-Downloader/
+git clone https://github.com/mujtaba1-1/Multi-Threaded-Downloader.git
 ```
 
 <p>2. Compile &amp; Run</p>
@@ -49,3 +49,4 @@ Technologies used in the project:
 *   Java Swing
 *   Multithreading and ExecutorService
 *   HTTP(S) connections via HttpURLConnection and HttpsURLConnection
+
